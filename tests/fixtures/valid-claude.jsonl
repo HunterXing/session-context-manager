@@ -1,0 +1,4 @@
+{"role":"user","content":"How do I parse JSON in Rust?","timestamp":1704067200}
+{"role":"assistant","content":"You can use serde_json crate. Here's an example:\n\n```rust\nlet value: Value = serde_json::from_str(input).unwrap();\n```","timestamp":1704067201}
+{"role":"user","content":"Show me how to handle errors","timestamp":1704067202}
+{"role":"assistant","content":"Use Result type for error handling:\n\n```rust\nmatch serde_json::from_str(input) {\n    Ok(value) => println!(\"{:?}\", value),\n    Err(e) => eprintln!(\"Error: {}\", e),\n}\n```","timestamp":1704067203}

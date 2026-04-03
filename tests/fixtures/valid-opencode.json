@@ -1,0 +1,8 @@
+{
+  "messages": [
+    {"role": "user", "content": "How do I create a new Rust project?", "timestamp": 1704153600},
+    {"role": "assistant", "content": "Use `cargo new project_name` to create a new Rust project.", "timestamp": 1704153601},
+    {"role": "user", "content": "What about adding dependencies?", "timestamp": 1704153602},
+    {"role": "assistant", "content": "Edit Cargo.toml and add the dependency:\n\n```toml\n[dependencies]\nserde = \"1\"\n```", "timestamp": 1704153603}
+  ]
+}
