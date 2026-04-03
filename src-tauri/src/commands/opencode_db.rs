@@ -14,12 +14,15 @@ impl OpenCodeDB {
     pub fn new() -> Result<Self, String> {
         let home = std::env::var("HOME").map_err(|_| "Failed to get HOME")?;
         let db_path = PathBuf::from(&home).join(DB_PATH);
+        Self::new_with_path(&db_path)
+    }
 
+    pub fn new_with_path(db_path: &PathBuf) -> Result<Self, String> {
         if !db_path.exists() {
             return Err(format!("OpenCode database not found at {:?}", db_path));
         }
 
-        let conn = Connection::open(&db_path)
+        let conn = Connection::open(db_path)
             .map_err(|e| format!("Failed to open OpenCode database: {}", e))?;
 
         Ok(Self {

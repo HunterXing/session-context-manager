@@ -138,9 +138,8 @@ pub fn scan_with_custom_paths(paths: &[SourcePath]) -> Result<Vec<Session>, Stri
                 sessions.extend(claude_sessions);
             }
         } else if source.source_type == "OpenCode" {
-            if let Ok(opencode_sessions) = scan_opencode_dir(&base_path) {
-                sessions.extend(opencode_sessions);
-            }
+            let opencode_sessions = scan_opencode_custom(&base_path);
+            sessions.extend(opencode_sessions);
         }
     }
     sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
@@ -239,11 +238,29 @@ fn scan_claude_custom(base_path: &PathBuf, project_name: &str) -> Result<Vec<Ses
     Ok(sessions)
 }
 
-fn scan_opencode_dir(base_path: &PathBuf) -> Result<Vec<Session>, String> {
+fn scan_opencode_custom(base_path: &PathBuf) -> Vec<Session> {
     if !base_path.exists() {
-        return Ok(Vec::new());
+        return Vec::new();
     }
-    let mut sessions = Vec::new();
+
+    if base_path.extension().map(|e| e == "db").unwrap_or(false) {
+        let db = match OpenCodeDB::new_with_path(base_path) {
+            Ok(db) => db,
+            Err(_) => return Vec::new(),
+        };
+        return db.get_all_sessions().unwrap_or_default();
+    }
+
+    if base_path.is_file() {
+        if base_path.to_string_lossy().ends_with("opencode.db") {
+            let db = match OpenCodeDB::new_with_path(base_path) {
+                Ok(db) => db,
+                Err(_) => return Vec::new(),
+            };
+            return db.get_all_sessions().unwrap_or_default();
+        }
+    }
+
     if let Ok(entries) = fs::read_dir(base_path) {
         for entry in entries.filter_map(|e| e.ok()) {
             let file_path = entry.path();
@@ -254,11 +271,16 @@ fn scan_opencode_dir(base_path: &PathBuf) -> Result<Vec<Session>, String> {
                     base_path.clone(),
                     "opencode".to_string(),
                 );
-                sessions.push(session);
+                return vec![session];
+            }
+            if file_path.to_string_lossy().ends_with("opencode.db") {
+                if let Ok(db) = OpenCodeDB::new_with_path(&file_path) {
+                    return db.get_all_sessions().unwrap_or_default();
+                }
             }
         }
     }
-    Ok(sessions)
+    Vec::new()
 }
 
 #[cfg(test)]
