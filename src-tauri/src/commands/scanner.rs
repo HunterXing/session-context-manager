@@ -1,3 +1,4 @@
+use crate::commands::opencode_db::OpenCodeDB;
 use crate::models::{Session, SessionSource};
 use crate::SourcePath;
 use std::fs;
@@ -68,7 +69,8 @@ impl RuntimeEnvironment {
     }
 
     pub fn get_opencode_base(&self) -> Option<PathBuf> {
-        self.get_home().map(|h| h.join(".config/opencode/sessions"))
+        self.get_home()
+            .map(|h| h.join(".local/share/opencode/opencode.db"))
     }
 }
 
@@ -186,29 +188,13 @@ fn scan_claude_env(env: &RuntimeEnvironment) -> Result<Vec<Session>, String> {
     Ok(sessions)
 }
 
-fn scan_opencode_env(env: &RuntimeEnvironment) -> Result<Vec<Session>, String> {
-    let Some(opencode_base) = env.get_opencode_base() else {
-        return Ok(Vec::new());
+fn scan_opencode_env(_env: &RuntimeEnvironment) -> Result<Vec<Session>, String> {
+    let db = match OpenCodeDB::new() {
+        Ok(db) => db,
+        Err(_) => return Ok(Vec::new()),
     };
-    if !opencode_base.exists() {
-        return Ok(Vec::new());
-    }
-    let mut sessions = Vec::new();
-    if let Ok(entries) = fs::read_dir(&opencode_base) {
-        for entry in entries.filter_map(|e| e.ok()) {
-            let file_path = entry.path();
-            if file_path.extension().map(|e| e == "json").unwrap_or(false) {
-                let session = Session::new(
-                    file_path.to_string_lossy().to_string(),
-                    SessionSource::OpenCode,
-                    opencode_base.clone(),
-                    "opencode".to_string(),
-                );
-                sessions.push(session);
-            }
-        }
-    }
-    Ok(sessions)
+
+    db.get_all_sessions()
 }
 
 fn scan_claude_custom(base_path: &PathBuf, project_name: &str) -> Result<Vec<Session>, String> {
