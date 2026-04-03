@@ -4,6 +4,7 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+pub mod commands;
 pub mod models;
 
 pub use models::{Message, Session, SessionSource};
