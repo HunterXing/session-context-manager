@@ -150,8 +150,14 @@ mod tests {
 
     #[test]
     fn test_escape_project_name() {
-        assert_eq!(escape_project_name("/home/user/project"), "home_user_project");
-        assert_eq!(escape_project_name("C:\\Users\\Project"), "C__Users_Project");
+        assert_eq!(
+            escape_project_name("/home/user/project"),
+            "home_user_project"
+        );
+        assert_eq!(
+            escape_project_name("C:\\Users\\Project"),
+            "C__Users_Project"
+        );
     }
 
     #[test]
@@ -162,7 +168,10 @@ mod tests {
 
         // Create a test session file
         let test_file = sessions_dir.join("test_session.jsonl");
-        File::create(&test_file).unwrap().write_all(b"test content\n").unwrap();
+        File::create(&test_file)
+            .unwrap()
+            .write_all(b"test content\n")
+            .unwrap();
 
         let result = scan_claude_sessions();
         assert!(result.is_ok());

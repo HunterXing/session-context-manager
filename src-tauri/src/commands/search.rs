@@ -94,7 +94,8 @@ mod tests {
 
     #[test]
     fn test_search_matches_message_content() {
-        let session1 = create_test_session("1", Utc::now(), vec!["first message", "second message"]);
+        let session1 =
+            create_test_session("1", Utc::now(), vec!["first message", "second message"]);
         let session2 = create_test_session("2", Utc::now(), vec!["different content"]);
         let sessions = vec![&session1, &session2];
 
@@ -129,11 +130,9 @@ mod tests {
         let session3 = create_test_session("3", base_time, vec!["apple crisp"]);
         let sessions = vec![&session1, &session2, &session3];
 
-        // Search for "apple" first
         let searched = search_sessions(&sessions, "apple");
         assert_eq!(searched.len(), 2);
 
-        // Then filter by date range
         let result = filter_by_date_range(&searched, Some(base_time), Some(base_time));
         assert_eq!(result.len(), 2);
         assert_eq!(result[0].id, "1");

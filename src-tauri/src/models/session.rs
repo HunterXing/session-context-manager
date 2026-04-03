@@ -32,7 +32,12 @@ pub struct Session {
 
 impl Session {
     /// Create a new empty session
-    pub fn new(id: String, source: SessionSource, project_path: PathBuf, project_name: String) -> Self {
+    pub fn new(
+        id: String,
+        source: SessionSource,
+        project_path: PathBuf,
+        project_name: String,
+    ) -> Self {
         let now = Utc::now();
         Self {
             id,
