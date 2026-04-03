@@ -6,7 +6,10 @@ use std::path::PathBuf;
 #[derive(Debug, Clone)]
 pub enum RuntimeEnvironment {
     Native,
-    WindowsWsl2 { ubuntu_home: PathBuf, username: String },
+    WindowsWsl2 {
+        ubuntu_home: PathBuf,
+        username: String,
+    },
     WindowsNative,
 }
 
@@ -30,7 +33,10 @@ impl RuntimeEnvironment {
                                                 .file_name()
                                                 .map(|n| n.to_string_lossy().to_string())
                                                 .unwrap_or_default();
-                                            return RuntimeEnvironment::WindowsWsl2 { ubuntu_home: user_home, username };
+                                            return RuntimeEnvironment::WindowsWsl2 {
+                                                ubuntu_home: user_home,
+                                                username,
+                                            };
                                         }
                                     }
                                 }
@@ -51,7 +57,9 @@ impl RuntimeEnvironment {
         match self {
             RuntimeEnvironment::Native => std::env::var("HOME").ok().map(PathBuf::from),
             RuntimeEnvironment::WindowsWsl2 { ubuntu_home, .. } => Some(ubuntu_home.clone()),
-            RuntimeEnvironment::WindowsNative => std::env::var("USERPROFILE").ok().map(PathBuf::from),
+            RuntimeEnvironment::WindowsNative => {
+                std::env::var("USERPROFILE").ok().map(PathBuf::from)
+            }
         }
     }
 
@@ -103,7 +111,10 @@ pub fn get_default_paths() -> Vec<(String, String)> {
         paths.push(("Claude".to_string(), claude.to_string_lossy().to_string()));
     }
     if let Some(opencode) = env.get_opencode_base() {
-        paths.push(("OpenCode".to_string(), opencode.to_string_lossy().to_string()));
+        paths.push((
+            "OpenCode".to_string(),
+            opencode.to_string_lossy().to_string(),
+        ));
     }
     paths
 }
@@ -239,80 +250,6 @@ fn scan_claude_custom(base_path: &PathBuf, project_name: &str) -> Result<Vec<Ses
     }
     Ok(sessions)
 }
-    let mut sessions = Vec::new();
-    if let Ok(projects) = fs::read_dir(base_path) {
-        for project in projects.filter_map(|e| e.ok()) {
-            let project_path = project.path();
-            if !project_path.is_dir() {
-                continue;
-            }
-            let proj_name = if project_name.is_empty() {
-                project_path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_default()
-            } else {
-                project_name.to_string()
-            };
-            let sessions_dir = project_path.join("sessions");
-            if !sessions_dir.exists() {
-                continue;
-            }
-            if let Ok(entries) = fs::read_dir(&sessions_dir) {
-                for entry in entries.filter_map(|e| e.ok()) {
-                    let file_path = entry.path();
-                    if file_path.extension().map(|e| e == "jsonl").unwrap_or(false) {
-                        let session = Session::new(
-                            file_path.to_string_lossy().to_string(),
-                            SessionSource::Claude,
-                            project_path.clone(),
-                            proj_name.clone(),
-                        );
-                        sessions.push(session);
-                    }
-                }
-            }
-        }
-    }
-    Ok(sessions)
-}
-    let mut sessions = Vec::new();
-    if let Ok(projects) = fs::read_dir(base_path) {
-        for project in projects.filter_map(|e| e.ok()) {
-            let project_path = project.path();
-            if !project_path.is_dir() {
-                continue;
-            }
-            let proj_name = if project_name.is_empty() {
-                project_path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_default()
-            } else {
-                project_name.to_string()
-            };
-            let sessions_dir = project_path.join("sessions");
-            if !sessions_dir.exists() {
-                continue;
-            }
-            if let Ok(entries) = fs::read_dir(&sessions_dir) {
-                for entry in entries.filter_map(|e| e.ok()) {
-                    let file_path = entry.path();
-                    if file_path.extension().map(|e| e == "jsonl").unwrap_or(false) {
-                        let session = Session::new(
-                            file_path.to_string_lossy().to_string(),
-                            SessionSource::Claude,
-                            project_path.clone(),
-                            proj_name.clone(),
-                        );
-                        sessions.push(session);
-                    }
-                }
-            }
-        }
-    }
-    Ok(sessions)
-}
 
 fn scan_opencode_dir(base_path: &PathBuf) -> Result<Vec<Session>, String> {
     if !base_path.exists() {
@@ -358,7 +295,13 @@ mod tests {
 
     #[test]
     fn test_escape_project_name() {
-        assert_eq!(escape_project_name("/home/user/project"), "home_user_project");
-        assert_eq!(escape_project_name("C:\\Users\\Project"), "C__Users_Project");
+        assert_eq!(
+            escape_project_name("/home/user/project"),
+            "home_user_project"
+        );
+        assert_eq!(
+            escape_project_name("C:\\Users\\Project"),
+            "C__Users_Project"
+        );
     }
 }
