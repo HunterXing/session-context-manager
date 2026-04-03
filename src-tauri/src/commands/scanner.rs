@@ -66,7 +66,7 @@ impl RuntimeEnvironment {
 
 fn expand_path(path: &str) -> PathBuf {
     if path.starts_with('~') {
-        if let Ok(home) = std::env::var_os("HOME") {
+        if let Some(home) = std::env::var_os("HOME") {
             return PathBuf::from(home).join(path.trim_start_matches('~'));
         }
     }
@@ -139,34 +139,33 @@ fn scan_claude_env(env: &RuntimeEnvironment) -> Result<Vec<Session>, String> {
     if !claude_base.exists() {
         return Ok(Vec::new());
     }
-    let projects = fs::read_dir(&claude_base) else {
-        return Ok(Vec::new());
-    };
     let mut sessions = Vec::new();
-    for project in projects.filter_map(|e| e.ok()) {
-        let project_path = project.path();
-        if !project_path.is_dir() {
-            continue;
-        }
-        let project_name = project_path
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
-        let sessions_dir = project_path.join("sessions");
-        if !sessions_dir.exists() {
-            continue;
-        }
-        if let Ok(entries) = fs::read_dir(&sessions_dir) {
-            for entry in entries.filter_map(|e| e.ok()) {
-                let file_path = entry.path();
-                if file_path.extension().map(|e| e == "jsonl").unwrap_or(false) {
-                    let session = Session::new(
-                        file_path.to_string_lossy().to_string(),
-                        SessionSource::Claude,
-                        project_path.clone(),
-                        project_name.clone(),
-                    );
-                    sessions.push(session);
+    if let Ok(projects) = fs::read_dir(&claude_base) {
+        for project in projects.filter_map(|e| e.ok()) {
+            let project_path = project.path();
+            if !project_path.is_dir() {
+                continue;
+            }
+            let project_name = project_path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
+            let sessions_dir = project_path.join("sessions");
+            if !sessions_dir.exists() {
+                continue;
+            }
+            if let Ok(entries) = fs::read_dir(&sessions_dir) {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let file_path = entry.path();
+                    if file_path.extension().map(|e| e == "jsonl").unwrap_or(false) {
+                        let session = Session::new(
+                            file_path.to_string_lossy().to_string(),
+                            SessionSource::Claude,
+                            project_path.clone(),
+                            project_name.clone(),
+                        );
+                        sessions.push(session);
+                    }
                 }
             }
         }
@@ -203,38 +202,111 @@ fn scan_claude_custom(base_path: &PathBuf, project_name: &str) -> Result<Vec<Ses
     if !base_path.exists() {
         return Ok(Vec::new());
     }
-    let projects = fs::read_dir(base_path) else {
-        return Ok(Vec::new());
-    };
     let mut sessions = Vec::new();
-    for project in projects.filter_map(|e| e.ok()) {
-        let project_path = project.path();
-        if !project_path.is_dir() {
-            continue;
+    if let Ok(projects) = fs::read_dir(base_path) {
+        for project in projects.filter_map(|e| e.ok()) {
+            let project_path = project.path();
+            if !project_path.is_dir() {
+                continue;
+            }
+            let proj_name = if project_name.is_empty() {
+                project_path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default()
+            } else {
+                project_name.to_string()
+            };
+            let sessions_dir = project_path.join("sessions");
+            if !sessions_dir.exists() {
+                continue;
+            }
+            if let Ok(entries) = fs::read_dir(&sessions_dir) {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let file_path = entry.path();
+                    if file_path.extension().map(|e| e == "jsonl").unwrap_or(false) {
+                        let session = Session::new(
+                            file_path.to_string_lossy().to_string(),
+                            SessionSource::Claude,
+                            project_path.clone(),
+                            proj_name.clone(),
+                        );
+                        sessions.push(session);
+                    }
+                }
+            }
         }
-        let proj_name = if project_name.is_empty() {
-            project_path
-                .file_name()
-                .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_default()
-        } else {
-            project_name.to_string()
-        };
-        let sessions_dir = project_path.join("sessions");
-        if !sessions_dir.exists() {
-            continue;
+    }
+    Ok(sessions)
+}
+    let mut sessions = Vec::new();
+    if let Ok(projects) = fs::read_dir(base_path) {
+        for project in projects.filter_map(|e| e.ok()) {
+            let project_path = project.path();
+            if !project_path.is_dir() {
+                continue;
+            }
+            let proj_name = if project_name.is_empty() {
+                project_path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default()
+            } else {
+                project_name.to_string()
+            };
+            let sessions_dir = project_path.join("sessions");
+            if !sessions_dir.exists() {
+                continue;
+            }
+            if let Ok(entries) = fs::read_dir(&sessions_dir) {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let file_path = entry.path();
+                    if file_path.extension().map(|e| e == "jsonl").unwrap_or(false) {
+                        let session = Session::new(
+                            file_path.to_string_lossy().to_string(),
+                            SessionSource::Claude,
+                            project_path.clone(),
+                            proj_name.clone(),
+                        );
+                        sessions.push(session);
+                    }
+                }
+            }
         }
-        if let Ok(entries) = fs::read_dir(&sessions_dir) {
-            for entry in entries.filter_map(|e| e.ok()) {
-                let file_path = entry.path();
-                if file_path.extension().map(|e| e == "jsonl").unwrap_or(false) {
-                    let session = Session::new(
-                        file_path.to_string_lossy().to_string(),
-                        SessionSource::Claude,
-                        project_path.clone(),
-                        proj_name.clone(),
-                    );
-                    sessions.push(session);
+    }
+    Ok(sessions)
+}
+    let mut sessions = Vec::new();
+    if let Ok(projects) = fs::read_dir(base_path) {
+        for project in projects.filter_map(|e| e.ok()) {
+            let project_path = project.path();
+            if !project_path.is_dir() {
+                continue;
+            }
+            let proj_name = if project_name.is_empty() {
+                project_path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default()
+            } else {
+                project_name.to_string()
+            };
+            let sessions_dir = project_path.join("sessions");
+            if !sessions_dir.exists() {
+                continue;
+            }
+            if let Ok(entries) = fs::read_dir(&sessions_dir) {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let file_path = entry.path();
+                    if file_path.extension().map(|e| e == "jsonl").unwrap_or(false) {
+                        let session = Session::new(
+                            file_path.to_string_lossy().to_string(),
+                            SessionSource::Claude,
+                            project_path.clone(),
+                            proj_name.clone(),
+                        );
+                        sessions.push(session);
+                    }
                 }
             }
         }
