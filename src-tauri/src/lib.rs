@@ -5,8 +5,7 @@ use commands::{exporter, parser, scanner, search};
 use models::Session;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use tauri::Manager;
-use tauri::StoreExt;
+use tauri_plugin_store::StoreExt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourcePath {
@@ -51,8 +50,7 @@ fn search(query: String, sessions: Vec<Session>) -> Vec<Session> {
 #[tauri::command]
 fn export_session(session: Session, output_dir: String) -> Result<String, String> {
     let output_path = Path::new(&output_dir);
-    exporter::export_to_markdown(&session, output_path)
-        .map(|p| p.to_string_lossy().to_string())
+    exporter::export_to_markdown(&session, output_path).map(|p| p.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -62,8 +60,12 @@ fn export_project(
     output_dir: String,
 ) -> Result<Vec<String>, String> {
     let output_path = Path::new(&output_dir);
-    exporter::export_project(&project, &sessions, output_path)
-        .map(|paths| paths.into_iter().map(|p| p.to_string_lossy().to_string()).collect())
+    exporter::export_project(&project, &sessions, output_path).map(|paths| {
+        paths
+            .into_iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect()
+    })
 }
 
 #[tauri::command]
@@ -74,7 +76,10 @@ fn get_default_source_paths() -> Vec<(String, String)> {
 #[tauri::command]
 async fn save_config(app: tauri::AppHandle, config: AppConfig) -> Result<(), String> {
     let store = app.store("config.json").map_err(|e| e.to_string())?;
-    store.set("config", serde_json::to_value(&config).map_err(|e| e.to_string())?);
+    store.set(
+        "config",
+        serde_json::to_value(&config).map_err(|e| e.to_string())?,
+    );
     store.save().map_err(|e| e.to_string())?;
     Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::models::{Message, Session};
+use crate::models::Session;
 use chrono::{DateTime, Utc};
 
 /// Search sessions by case-insensitive substring match on message content.
