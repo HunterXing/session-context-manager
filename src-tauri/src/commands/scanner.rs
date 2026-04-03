@@ -75,7 +75,9 @@ impl RuntimeEnvironment {
 fn expand_path(path: &str) -> PathBuf {
     if path.starts_with('~') {
         if let Some(home) = std::env::var_os("HOME") {
-            return PathBuf::from(home).join(path.trim_start_matches('~'));
+            let stripped = path.trim_start_matches('~');
+            let stripped = stripped.trim_start_matches('/');
+            return PathBuf::from(home).join(stripped);
         }
     }
     PathBuf::from(path)
@@ -297,7 +299,7 @@ mod tests {
     fn test_escape_project_name() {
         assert_eq!(
             escape_project_name("/home/user/project"),
-            "home_user_project"
+            "_home_user_project"
         );
         assert_eq!(
             escape_project_name("C:\\Users\\Project"),

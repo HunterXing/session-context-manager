@@ -1,0 +1,4 @@
+{"role": "user", "content": "How do I parse JSON in Rust?", "timestamp": 1234567890}
+{"role": "assistant", "content": "You can use serde_json to parse JSON in Rust. Try `cargo new my_project`", "timestamp": 1234567891}
+{"role": "user", "content": "Thanks!", "timestamp": 1234567892}
+{"role": "assistant", "content": "You're welcome!", "timestamp": 1234567893}

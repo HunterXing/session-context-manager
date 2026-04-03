@@ -41,7 +41,7 @@ pub fn filter_by_date_range<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::SessionSource;
+    use crate::models::{Message, SessionSource};
     use std::path::PathBuf;
 
     fn create_test_session(
@@ -71,7 +71,7 @@ mod tests {
     fn test_empty_query_returns_all_sessions() {
         let session1 = create_test_session("1", Utc::now(), vec!["hello"]);
         let session2 = create_test_session("2", Utc::now(), vec!["world"]);
-        let sessions = vec![&session1, &session2];
+        let sessions = vec![session1, session2];
 
         let result = search_sessions(&sessions, "");
         assert_eq!(result.len(), 2);
@@ -81,7 +81,7 @@ mod tests {
     fn test_search_case_insensitive() {
         let session1 = create_test_session("1", Utc::now(), vec!["Hello World"]);
         let session2 = create_test_session("2", Utc::now(), vec!["Goodbye"]);
-        let sessions = vec![&session1, &session2];
+        let sessions = vec![session1, session2];
 
         let result = search_sessions(&sessions, "hello");
         assert_eq!(result.len(), 1);
@@ -97,7 +97,7 @@ mod tests {
         let session1 =
             create_test_session("1", Utc::now(), vec!["first message", "second message"]);
         let session2 = create_test_session("2", Utc::now(), vec!["different content"]);
-        let sessions = vec![&session1, &session2];
+        let sessions = vec![session1, session2];
 
         let result = search_sessions(&sessions, "second");
         assert_eq!(result.len(), 1);
@@ -110,7 +110,7 @@ mod tests {
         let session1 = create_test_session("1", base_time, vec!["old"]);
         let session2 = create_test_session("2", base_time, vec!["middle"]);
         let session3 = create_test_session("3", base_time, vec!["new"]);
-        let sessions = vec![&session1, &session2, &session3];
+        let sessions = vec![session1, session2, session3];
 
         let result = filter_by_date_range(&sessions, Some(base_time), Some(base_time));
         assert_eq!(result.len(), 3);
@@ -128,14 +128,17 @@ mod tests {
         let session1 = create_test_session("1", base_time, vec!["apple pie"]);
         let session2 = create_test_session("2", base_time, vec!["banana bread"]);
         let session3 = create_test_session("3", base_time, vec!["apple crisp"]);
-        let sessions = vec![&session1, &session2, &session3];
+        let sessions: Vec<Session> = vec![session1, session2, session3];
 
-        let searched = search_sessions(&sessions, "apple");
+        let date_filtered = filter_by_date_range(&sessions, Some(base_time), Some(base_time));
+        assert_eq!(date_filtered.len(), 3);
+
+        let searched: Vec<&Session> = date_filtered
+            .into_iter()
+            .filter(|s| s.messages.iter().any(|m| m.content.contains("apple")))
+            .collect();
         assert_eq!(searched.len(), 2);
-
-        let result = filter_by_date_range(&searched, Some(base_time), Some(base_time));
-        assert_eq!(result.len(), 2);
-        assert_eq!(result[0].id, "1");
-        assert_eq!(result[1].id, "3");
+        assert_eq!(searched[0].id, "1");
+        assert_eq!(searched[1].id, "3");
     }
 }

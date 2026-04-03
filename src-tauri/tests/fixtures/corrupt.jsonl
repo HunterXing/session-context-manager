@@ -1,0 +1,4 @@
+{"role": "user", "content": "Valid line", "timestamp": 1234567890}
+{"role": "assistant", "content": "Another valid line", "timestamp": 1234567891}
+invalid json line
+another invalid line
