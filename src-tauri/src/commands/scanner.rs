@@ -17,13 +17,13 @@ impl RuntimeEnvironment {
             let wsl_path = PathBuf::from(r"\\wsl$\Ubuntu");
             if wsl_path.exists() {
                 if let Ok(entries) = fs::read_dir(&wsl_path) {
-                    for entry in entries.flatten() {
+                    for entry in entries.filter_map(|e| e.ok()) {
                         let path = entry.path();
                         if path.is_dir() {
                             let home_dir = path.join("home");
                             if home_dir.exists() {
                                 if let Ok(sub_entries) = fs::read_dir(&home_dir) {
-                                    for sub in sub_entries.flatten() {
+                                    for sub in sub_entries.filter_map(|e| e.ok()) {
                                         let user_home = sub.path();
                                         if user_home.is_dir() {
                                             let username = user_home
@@ -143,7 +143,7 @@ fn scan_claude_env(env: &RuntimeEnvironment) -> Result<Vec<Session>, String> {
         return Ok(Vec::new());
     };
     let mut sessions = Vec::new();
-    for project in projects.flatten() {
+    for project in projects.filter_map(|e| e.ok()) {
         let project_path = project.path();
         if !project_path.is_dir() {
             continue;
@@ -157,7 +157,7 @@ fn scan_claude_env(env: &RuntimeEnvironment) -> Result<Vec<Session>, String> {
             continue;
         }
         if let Ok(entries) = fs::read_dir(&sessions_dir) {
-            for entry in entries.flatten() {
+            for entry in entries.filter_map(|e| e.ok()) {
                 let file_path = entry.path();
                 if file_path.extension().map(|e| e == "jsonl").unwrap_or(false) {
                     let session = Session::new(
@@ -183,7 +183,7 @@ fn scan_opencode_env(env: &RuntimeEnvironment) -> Result<Vec<Session>, String> {
     }
     let mut sessions = Vec::new();
     if let Ok(entries) = fs::read_dir(&opencode_base) {
-        for entry in entries.flatten() {
+        for entry in entries.filter_map(|e| e.ok()) {
             let file_path = entry.path();
             if file_path.extension().map(|e| e == "json").unwrap_or(false) {
                 let session = Session::new(
@@ -207,7 +207,7 @@ fn scan_claude_custom(base_path: &PathBuf, project_name: &str) -> Result<Vec<Ses
         return Ok(Vec::new());
     };
     let mut sessions = Vec::new();
-    for project in projects.flatten() {
+    for project in projects.filter_map(|e| e.ok()) {
         let project_path = project.path();
         if !project_path.is_dir() {
             continue;
@@ -225,7 +225,7 @@ fn scan_claude_custom(base_path: &PathBuf, project_name: &str) -> Result<Vec<Ses
             continue;
         }
         if let Ok(entries) = fs::read_dir(&sessions_dir) {
-            for entry in entries.flatten() {
+            for entry in entries.filter_map(|e| e.ok()) {
                 let file_path = entry.path();
                 if file_path.extension().map(|e| e == "jsonl").unwrap_or(false) {
                     let session = Session::new(
@@ -248,7 +248,7 @@ fn scan_opencode_dir(base_path: &PathBuf) -> Result<Vec<Session>, String> {
     }
     let mut sessions = Vec::new();
     if let Ok(entries) = fs::read_dir(base_path) {
-        for entry in entries.flatten() {
+        for entry in entries.filter_map(|e| e.ok()) {
             let file_path = entry.path();
             if file_path.extension().map(|e| e == "json").unwrap_or(false) {
                 let session = Session::new(

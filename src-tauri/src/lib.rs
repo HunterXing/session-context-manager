@@ -6,6 +6,7 @@ use models::Session;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tauri::Manager;
+use tauri::StoreExt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourcePath {

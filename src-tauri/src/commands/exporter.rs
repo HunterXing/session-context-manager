@@ -3,6 +3,14 @@ use std::path::{Path, PathBuf};
 
 use crate::models::session::{Message, Session, SessionSource};
 
+fn format_messages(messages: &[Message]) -> String {
+    messages
+        .iter()
+        .map(|m| format!("### {}\n\n{}", m.role, m.content))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 pub fn export_to_markdown(session: &Session, output_dir: &Path) -> Result<PathBuf, String> {
     let project_dir = output_dir.join(&session.project_name);
     fs::create_dir_all(&project_dir).map_err(|e| format!("Failed to create directory: {}", e))?;
