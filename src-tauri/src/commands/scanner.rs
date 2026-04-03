@@ -139,7 +139,7 @@ fn scan_claude_env(env: &RuntimeEnvironment) -> Result<Vec<Session>, String> {
     if !claude_base.exists() {
         return Ok(Vec::new());
     }
-    let projects = fs::read_dir(&cla不像) else {
+    let projects = fs::read_dir(&claude_base) else {
         return Ok(Vec::new());
     };
     let mut sessions = Vec::new();

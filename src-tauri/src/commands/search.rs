@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 
 /// Search sessions by case-insensitive substring match on message content.
 /// Returns references to sessions that contain the query in any message.
-pub fn search_sessions(sessions: &[Session], query: &str) -> Vec<&Session> {
+pub fn search_sessions<'a>(sessions: &'a [Session], query: &str) -> Vec<&'a Session> {
     if query.is_empty() {
         return sessions.iter().collect();
     }
@@ -23,11 +23,11 @@ pub fn search_sessions(sessions: &[Session], query: &str) -> Vec<&Session> {
 /// Filter sessions by date range (inclusive on both bounds).
 /// If start is None, no lower bound is applied.
 /// If end is None, no upper bound is applied.
-pub fn filter_by_date_range(
-    sessions: &[Session],
+pub fn filter_by_date_range<'a>(
+    sessions: &'a [Session],
     start: Option<DateTime<Utc>>,
     end: Option<DateTime<Utc>>,
-) -> Vec<&Session> {
+) -> Vec<&'a Session> {
     sessions
         .iter()
         .filter(|session| {
