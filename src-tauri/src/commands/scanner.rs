@@ -2,11 +2,111 @@ use crate::models::{Session, SessionSource};
 use std::fs;
 use std::path::PathBuf;
 
+/// Represents the detected runtime environment
+#[derive(Debug, Clone)]
+pub enum RuntimeEnvironment {
+    /// Native Linux/macOS with HOME set
+    Native,
+    /// Windows with WSL2 Ubuntu
+    WindowsWsl2 {
+        ubuntu_home: PathBuf,
+        username: String,
+    },
+    /// Windows without WSL2 (native Windows paths)
+    WindowsNative,
+}
+
+impl RuntimeEnvironment {
+    /// Detect the current runtime environment
+    pub fn detect() -> Self {
+        #[cfg(target_os = "windows")]
+        {
+            // Check if WSL2 Ubuntu is available via \\wsl$\Ubuntu
+            let wsl_path = PathBuf::from(r"\\wsl$\Ubuntu");
+            if wsl_path.exists() {
+                // Try to find Ubuntu username from /etc/passwd via WSL
+                // Common locations for Ubuntu home in WSL2
+                if let Ok(entries) = fs::read_dir(&wsl_path) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if path.is_dir() {
+                            // Check for home directory
+                            let home_dir = path.join("home");
+                            if home_dir.exists() {
+                                if let Ok(sub_entries) = fs::read_dir(&home_dir) {
+                                    for sub in sub_entries.flatten() {
+                                        let user_home = sub.path();
+                                        if user_home.is_dir() {
+                                            let username = user_home
+                                                .file_name()
+                                                .map(|n| n.to_string_lossy().to_string())
+                                                .unwrap_or_default();
+                                            return RuntimeEnvironment::WindowsWsl2 {
+                                                ubuntu_home: user_home,
+                                                username,
+                                            };
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // Fallback: try to detect from WSL environment
+                if let Ok(home) = std::env::var("WSL_HOME") {
+                    if let Ok(username) = std::env::var("WSL_USERNAME") {
+                        return RuntimeEnvironment::WindowsWsl2 {
+                            ubuntu_home: PathBuf::from(&home),
+                            username,
+                        };
+                    }
+                }
+            }
+            return RuntimeEnvironment::WindowsNative;
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            RuntimeEnvironment::Native
+        }
+    }
+
+    /// Get the base home directory path for session scanning
+    pub fn get_home(&self) -> Option<PathBuf> {
+        match self {
+            RuntimeEnvironment::Native => std::env::var("HOME").ok().map(PathBuf::from),
+            RuntimeEnvironment::WindowsWsl2 { ubuntu_home, .. } => Some(ubuntu_home.clone()),
+            RuntimeEnvironment::WindowsNative => std::env::var("USERPROFILE").ok().map(PathBuf::from),
+        }
+    }
+
+    /// Get the path for Claude sessions
+    pub fn get_claude_base(&self) -> Option<PathBuf> {
+        self.get_home().map(|h| h.join(".claude/projects"))
+    }
+
+    /// Get the path for OpenCode sessions
+    pub fn get_opencode_base(&self) -> Option<PathBuf> {
+        match self {
+            RuntimeEnvironment::Native | RuntimeEnvironment::WindowsWsl2 { .. } => {
+                self.get_home().map(|h| h.join(".config/opencode/sessions"))
+            }
+            RuntimeEnvironment::WindowsNative => {
+                self.get_home().map(|h| h.join(".config/opencode/sessions"))
+            }
+        }
+    }
+}
+
 /// Expands a path with ~ to the user's home directory
 fn expand_path(path: &str) -> PathBuf {
     if path.starts_with('~') {
-        if let Ok(home) = std::env::var("HOME") {
+        if let Some(home) = std::env::var_os("HOME") {
             return PathBuf::from(home).join(path.trim_start_matches('~'));
+        }
+        // Also check WSL_HOME for Windows
+        if let Ok(wsldir) = std::env::var("WSL_HOME") {
+            return PathBuf::from(wsldir).join(path.trim_start_matches('~'));
         }
     }
     PathBuf::from(path)
@@ -23,21 +123,19 @@ fn escape_project_name(project_path: &str) -> String {
 
 /// Scans both Claude and OpenCode source directories for session files.
 ///
-/// Claude path: `~/.claude/projects/{escaped_project}/sessions/*.jsonl`
-/// OpenCode path: `~/.config/opencode/sessions/*.json`
-///
 /// Returns `Vec<Session>` with project grouping and time sorting.
 /// Handles missing directories gracefully by returning an empty vector.
 pub fn scan_sources() -> Result<Vec<Session>, String> {
     let mut sessions = Vec::new();
+    let env = RuntimeEnvironment::detect();
 
     // Scan Claude sessions
-    if let Ok(claude_sessions) = scan_claude_sessions() {
+    if let Ok(claude_sessions) = scan_claude_sessions_internal(&env) {
         sessions.extend(claude_sessions);
     }
 
     // Scan OpenCode sessions
-    if let Ok(opencode_sessions) = scan_opencode_sessions() {
+    if let Ok(opencode_sessions) = scan_opencode_sessions_internal(&env) {
         sessions.extend(opencode_sessions);
     }
 
@@ -47,17 +145,30 @@ pub fn scan_sources() -> Result<Vec<Session>, String> {
     Ok(sessions)
 }
 
-/// Scans Claude session directories
-pub fn scan_claude_sessions() -> Result<Vec<Session>, String> {
-    let mut sessions = Vec::new();
-    let home = std::env::var("HOME").map_err(|_| "HOME not set")?;
-    let claude_base = PathBuf::from(&home).join(".claude/projects");
+/// Get default source paths for display in settings
+pub fn get_default_paths() -> Vec<(String, String)> {
+    let env = RuntimeEnvironment::detect();
+    let mut paths = Vec::new();
 
-    if !claude_base.exists() {
-        return Ok(sessions); // Gracefully handle missing directory
+    if let Some(claude) = env.get_claude_base() {
+        paths.push(("Claude".to_string(), claude.to_string_lossy().to_string()));
+    }
+    if let Some(opencode) = env.get_opencode_base() {
+        paths.push(("OpenCode".to_string(), opencode.to_string_lossy().to_string()));
     }
 
-    // Read all project directories
+    paths
+}
+
+/// Scans Claude session directories using the provided environment
+fn scan_claude_sessions_internal(env: &RuntimeEnvironment) -> Result<Vec<Session>, String> {
+    let mut sessions = Vec::new();
+    let claude_base = env.get_claude_base().ok_or("Cannot determine Claude base path")?;
+
+    if !claude_base.exists() {
+        return Ok(sessions);
+    }
+
     let projects = fs::read_dir(&claude_base).map_err(|e| e.to_string())?;
 
     for project in projects.flatten() {
@@ -76,12 +187,10 @@ pub fn scan_claude_sessions() -> Result<Vec<Session>, String> {
             continue;
         }
 
-        // Read session files
         if let Ok(entries) = fs::read_dir(&sessions_dir) {
             for entry in entries.flatten() {
                 let file_path = entry.path();
                 if file_path.extension().map(|e| e == "jsonl").unwrap_or(false) {
-                    // Create a placeholder session - actual parsing is Task 6
                     let session = Session::new(
                         file_path.to_string_lossy().to_string(),
                         SessionSource::Claude,
@@ -97,21 +206,19 @@ pub fn scan_claude_sessions() -> Result<Vec<Session>, String> {
     Ok(sessions)
 }
 
-/// Scans OpenCode session directories
-pub fn scan_opencode_sessions() -> Result<Vec<Session>, String> {
+/// Scans OpenCode session directories using the provided environment
+fn scan_opencode_sessions_internal(env: &RuntimeEnvironment) -> Result<Vec<Session>, String> {
     let mut sessions = Vec::new();
-    let opencode_base = expand_path("~/.config/opencode/sessions");
+    let opencode_base = env.get_opencode_base().ok_or("Cannot determine OpenCode base path")?;
 
     if !opencode_base.exists() {
-        return Ok(sessions); // Gracefully handle missing directory
+        return Ok(sessions);
     }
 
-    // Read all .json files in the sessions directory
     if let Ok(entries) = fs::read_dir(&opencode_base) {
         for entry in entries.flatten() {
             let file_path = entry.path();
             if file_path.extension().map(|e| e == "json").unwrap_or(false) {
-                // Create a placeholder session - actual parsing is Task 6
                 let session = Session::new(
                     file_path.to_string_lossy().to_string(),
                     SessionSource::OpenCode,
@@ -124,6 +231,18 @@ pub fn scan_opencode_sessions() -> Result<Vec<Session>, String> {
     }
 
     Ok(sessions)
+}
+
+/// Scans Claude session directories (legacy API)
+pub fn scan_claude_sessions() -> Result<Vec<Session>, String> {
+    let env = RuntimeEnvironment::detect();
+    scan_claude_sessions_internal(&env)
+}
+
+/// Scans OpenCode session directories (legacy API)
+pub fn scan_opencode_sessions() -> Result<Vec<Session>, String> {
+    let env = RuntimeEnvironment::detect();
+    scan_opencode_sessions_internal(&env)
 }
 
 #[cfg(test)]

@@ -10,8 +10,6 @@ function AppContent() {
   const {
     isSettingsOpen,
     closeSettings,
-    claudePath,
-    opencodePath,
     exportPath,
     onRescan,
     setExportPath,
@@ -19,11 +17,11 @@ function AppContent() {
 
   return (
     <>
-      <div className="flex h-screen bg-gray-900 text-white">
+      <div className="flex h-screen bg-slate-900 text-gray-100">
         <Sidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex-1 flex flex-col">
           <Toolbar />
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1 flex">
             <SessionList />
             <Preview />
           </div>
@@ -32,8 +30,6 @@ function AppContent() {
       <Settings
         isOpen={isSettingsOpen}
         onClose={closeSettings}
-        claudePath={claudePath}
-        opencodePath={opencodePath}
         exportPath={exportPath}
         onRescan={onRescan}
         onExportPathChange={setExportPath}

@@ -44,6 +44,11 @@ fn export_project(
         .map(|paths| paths.into_iter().map(|p| p.to_string_lossy().to_string()).collect())
 }
 
+#[tauri::command]
+fn get_default_source_paths() -> Vec<(String, String)> {
+    scanner::get_default_paths()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -53,7 +58,8 @@ pub fn run() {
             get_session,
             search,
             export_session,
-            export_project
+            export_project,
+            get_default_source_paths
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
