@@ -13,6 +13,8 @@
 - **时间排序** - 所有会话按最近更新时间排序
 - **全文搜索** - 快速搜索所有会话内容
 - **Markdown 导出** - 将会话导出为 Markdown 格式，便于分享和回顾
+- **自定义路径** - 支持手动配置会话源路径，适用于 WSL2、自定义目录等场景
+- **配置持久化** - 自定义路径和导出路径会自动保存
 
 ### 跨平台支持
 - **Windows + WSL2** - 自动检测 Windows 上的 WSL2 Ubuntu 安装，读取其中的会话
@@ -21,12 +23,25 @@
 
 ## 支持的会话来源
 
+### 自动检测路径
+
 | 来源 | 会话路径 | 文件格式 |
 |------|----------|----------|
 | Claude Code (WSL2) | `\\wsl$\Ubuntu\home\{user}\.claude\projects\` | `.jsonl` |
 | Claude Code (Linux) | `~/.claude/projects/` | `.jsonl` |
 | OpenCode (WSL2) | `\\wsl$\Ubuntu\home\{user}\.config\opencode\sessions\` | `.json` |
 | OpenCode (Linux) | `~/.config/opencode/sessions/` | `.json` |
+
+### 自定义路径
+
+应用支持手动配置任意路径作为会话来源，适合以下场景：
+
+- **WSL2 自定义路径** - 如果 WSL2 用户名不是自动检测到的
+- **远程服务器路径** - 通过映射网络驱动器访问
+- **自定义目录** - 自己的会话存储位置
+- **多项目聚合** - 合并不同位置的会话
+
+配置方式：打开设置 → Custom Paths → 添加路径
 
 ## 安装
 

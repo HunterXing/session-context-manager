@@ -160,6 +160,212 @@ pub fn get_default_paths() -> Vec<(String, String)> {
     paths
 }
 
+use crate::SourcePath;
+
+pub fn scan_with_custom_paths(paths: &[SourcePath]) -> Result<Vec<Session>, String> {
+    let mut sessions = Vec::new();
+
+    for source in paths {
+        if !source.enabled {
+            continue;
+        }
+
+        let base_path = PathBuf::from(&source.path);
+        if !base_path.exists() {
+            continue;
+        }
+
+        if source.source_type == "Claude" {
+            if let Ok(claude_sessions) = scan_claude_custom(&base_path, &source.name) {
+                sessions.extend(claude_sessions);
+            }
+        } else if source.source_type == "OpenCode" {
+            if let Ok(opencode_sessions) = scan_opencode_custom(&base_path) {
+                sessions.extend(opencode_sessions);
+            }
+        }
+    }
+
+    sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    Ok(sessions)
+}
+
+fn scan_claude_custom(base_path: &PathBuf, project_name: &str) -> Result<Vec<Session>, String> {
+    let mut sessions = Vec::new();
+
+    if !base_path.exists() {
+        return Ok(sessions);
+    }
+
+    let projects = fs::read_dir(base_path).map_err(|e| e.to_string())?;
+
+    for project in projects.flatten() {
+        let project_path = project.path();
+        if !project_path.is_dir() {
+            continue;
+        }
+
+        let proj_name = if project_name.is_empty() {
+            project_path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default()
+        } else {
+            project_name.to_string()
+        };
+
+        let sessions_dir = project_path.join("sessions");
+        if !sessions_dir.exists() {
+            continue;
+        }
+
+        if let Ok(entries) = fs::read_dir(&sessions_dir) {
+            for entry in entries.flatten() {
+                let file_path = entry.path();
+                if file_path.extension().map(|e| e == "jsonl").unwrap_or(false) {
+                    let session = Session::new(
+                        file_path.to_string_lossy().to_string(),
+                        SessionSource::Claude,
+                        project_path.clone(),
+                        proj_name.clone(),
+                    );
+                    sessions.push(session);
+                }
+            }
+        }
+    }
+
+    Ok(sessions)
+}
+
+fn scan_opencode_custom(base_path: &PathBuf) -> Result<Vec<Session>, String> {
+    let mut sessions = Vec::new();
+
+    if !base_path.exists() {
+        return Ok(sessions);
+    }
+
+    if let Ok(entries) = fs::read_dir(base_path) {
+        for entry in entries.flatten() {
+            let file_path = entry.path();
+            if file_path.extension().map(|e| e == "json").unwrap_or(false) {
+                let session = Session::new(
+                    file_path.to_string_lossy().to_string(),
+                    SessionSource::OpenCode,
+                    base_path.clone(),
+                    "opencode".to_string(),
+                );
+                sessions.push(session);
+            }
+        }
+    }
+
+    Ok(sessions)
+}
+
+use crate::SourcePath;
+
+pub fn scan_with_custom_paths(paths: &[SourcePath]) -> Result<Vec<Session>, String> {
+    let mut sessions = Vec::new();
+
+    for source in paths {
+        if !source.enabled {
+            continue;
+        }
+
+        let base_path = PathBuf::from(&source.path);
+        if !base_path.exists() {
+            continue;
+        }
+
+        if source.source_type == "Claude" {
+            if let Ok(claude_sessions) = scan_claude_dir(&base_path, &source.name) {
+                sessions.extend(claude_sessions);
+            }
+        } else if source.source_type == "OpenCode" {
+            if let Ok(opencode_sessions) = scan_opencode_dir(&base_path) {
+                sessions.extend(opencode_sessions);
+            }
+        }
+    }
+
+    sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    Ok(sessions)
+}
+
+fn scan_claude_dir(base_path: &PathBuf, project_name: &str) -> Result<Vec<Session>, String> {
+    let mut sessions = Vec::new();
+
+    if !base_path.exists() {
+        return Ok(sessions);
+    }
+
+    let projects = fs::read_dir(base_path).map_err(|e| e.to_string())?;
+
+    for project in projects.flatten() {
+        let project_path = project.path();
+        if !project_path.is_dir() {
+            continue;
+        }
+
+        let proj_name = if project_name.is_empty() {
+            project_path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default()
+        } else {
+            project_name.to_string()
+        };
+
+        let sessions_dir = project_path.join("sessions");
+        if !sessions_dir.exists() {
+            continue;
+        }
+
+        if let Ok(entries) = fs::read_dir(&sessions_dir) {
+            for entry in entries.flatten() {
+                let file_path = entry.path();
+                if file_path.extension().map(|e| e == "jsonl").unwrap_or(false) {
+                    let session = Session::new(
+                        file_path.to_string_lossy().to_string(),
+                        SessionSource::Claude,
+                        project_path.clone(),
+                        proj_name.clone(),
+                    );
+                    sessions.push(session);
+                }
+            }
+        }
+    }
+
+    Ok(sessions)
+}
+
+fn scan_opencode_dir(base_path: &PathBuf) -> Result<Vec<Session>, String> {
+    let mut sessions = Vec::new();
+
+    if !base_path.exists() {
+        return Ok(sessions);
+    }
+
+    if let Ok(entries) = fs::read_dir(base_path) {
+        for entry in entries.flatten() {
+            let file_path = entry.path();
+            if file_path.extension().map(|e| e == "json").unwrap_or(false) {
+                let session = Session::new(
+                    file_path.to_string_lossy().to_string(),
+                    SessionSource::OpenCode,
+                    base_path.clone(),
+                    "opencode".to_string(),
+                );
+                sessions.push(session);
+            }
+        }
+    }
+
+    Ok(sessions)
+}
+
 /// Scans Claude session directories using the provided environment
 fn scan_claude_sessions_internal(env: &RuntimeEnvironment) -> Result<Vec<Session>, String> {
     let mut sessions = Vec::new();
